@@ -40,7 +40,7 @@ def apply_saved_mask(image):
 
     # Convertir l'image en tableau numpy
     img_np = np.array(image)
-    masks = np.load('examples/output/saved_masks.npy')
+    masks = np.load('output/saved_masks.npy')
     # Parcourir chaque prédiction pour appliquer le seuil et le label
     for i, mask in enumerate(masks):  
         for c in range(3):

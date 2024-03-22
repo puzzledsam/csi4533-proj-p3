@@ -30,6 +30,12 @@ if __name__ == "__main__":
         for subdir in dirs:
             full_dir = os.path.join(root, subdir)
             for file_name in os.listdir(full_dir):
+                
+                output_dir_full_path = os.path.join(output_path_dir, subdir)
+                # Créer le dossier pour les résultats, si il n'existe pas 
+                if not os.path.exists(output_dir_full_path):
+                    os.makedirs(output_dir_full_path)
+                
                 image_path = os.path.join(full_dir, file_name)
                 image = Image.open(image_path)
                 transformed_img = transforms(image)
@@ -41,8 +47,5 @@ if __name__ == "__main__":
 
                 # Traiter le résultat de l'inférence
                 result = tools.process_inference(output,image)
-                output_dir_full_path = os.path.join(output_path_dir, subdir)
-                if not os.path.exists(output_dir_full_path):
-                    os.makedirs(output_dir_full_path)
                 result.save(os.path.join(output_dir_full_path, file_name))
                 # result.show()
