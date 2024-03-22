@@ -1,0 +1,6 @@
+images/
+env/
+examples/
+output/
+__pycache__
+.DS_Store
