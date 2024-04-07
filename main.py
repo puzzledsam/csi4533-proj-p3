@@ -54,7 +54,6 @@ def comparePersonHistograms(person1, person2):
     return max(scores, default=None)
 
 ### Point d'entrée principal du script ###
-
 if __name__ == "__main__":
     
     torch_device_name = "cpu"
@@ -72,31 +71,46 @@ if __name__ == "__main__":
     source_path_dir = "images"
     output_path_dir = "output"
     #image_name = "sample_2.png"
+    
+    # Fichier d'images des personnes à identifier dans les images de caméra de surveillance
+    person_imgs = ['person1_file.png', 'etc...']
 
     # Charger le modèle et appliquer les transformations à l'image
     seg_model, transforms = model.get_model()
+    
+    for person_img_path in person_imgs:
+        
+        # Charger l'image d'entrée (personne à identifier)
+        person_img = cv2.imread(person_img_path)
 
-    # Ouvrir les images et appliquer les transformations
-    for root, dirs, _ in os.walk(source_path_dir):
-        for subdir in dirs:
-            full_dir = os.path.join(root, subdir)
-            for file_name in os.listdir(full_dir):
-                
-                output_dir_full_path = os.path.join(output_path_dir, subdir)
-                # Créer le dossier pour les résultats, si il n'existe pas 
-                if not os.path.exists(output_dir_full_path):
-                    os.makedirs(output_dir_full_path)
-                
-                image_path = os.path.join(full_dir, file_name)
-                image = Image.open(image_path)
-                transformed_img = transforms(image)
-                
+        # Réduire les couleurs de l'image
+        div = 64 # Pixel intensity division factor
+        reduced_person_img = person_img // div * div + div // 2
+        
+        # TODO: get bounding boxes for each person in each target image, and then compare histograms to find if the person matches
+        # ----- if the person matches, then save that image file in a directory for that person. The bounding boxes can be saved so
+        # ----- we don't have to reindentify them every time we want to generate histograms.
 
-                # Effectuer l'inférence sur l'image transformée sans calculer les gradients
-                with torch.no_grad():
-                    output = seg_model([transformed_img])
+        # Ouvrir les images et appliquer les transformations
+        for root, dirs, _ in os.walk(source_path_dir):
+            for subdir in dirs:
+                full_dir = os.path.join(root, subdir)
+                for file_name in os.listdir(full_dir):
+                    
+                    output_dir_full_path = os.path.join(output_path_dir, subdir)
+                    # Créer le dossier pour les résultats, si il n'existe pas 
+                    if not os.path.exists(output_dir_full_path):
+                        os.makedirs(output_dir_full_path)
+                    
+                    image_path = os.path.join(full_dir, file_name)
+                    image = Image.open(image_path)
+                    transformed_img = transforms(image)
+                    
+                    # Effectuer l'inférence sur l'image transformée sans calculer les gradients
+                    with torch.no_grad():
+                        output = seg_model([transformed_img])
 
-                # Traiter le résultat de l'inférence
-                result = tools.process_inference(output,image)
-                result.save(os.path.join(output_dir_full_path, file_name))
-                # result.show()
+                    # Traiter le résultat de l'inférence
+                    result = tools.process_inference(output,image)
+                    result.save(os.path.join(output_dir_full_path, file_name))
+                    # result.show()
