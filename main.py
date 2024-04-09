@@ -4,6 +4,7 @@ import os
 from PIL import Image
 from utils import model, tools
 import torch
+from torchvision.ops import masks_to_boxes
 
 ### FONCTIONS ###
 
@@ -73,23 +74,30 @@ if __name__ == "__main__":
     #image_name = "sample_2.png"
     
     # Fichier d'images des personnes à identifier dans les images de caméra de surveillance
-    person_imgs = ['person1_file.png', 'etc...']
+    person_imgs = ['targets/person_1.png']
 
     # Charger le modèle et appliquer les transformations à l'image
     seg_model, transforms = model.get_model()
     
     for person_img_path in person_imgs:
         
+        print(f"Processing {person_img_path}...")
+        
         # Charger l'image d'entrée (personne à identifier)
         person_img = cv2.imread(person_img_path)
+        person_h, person_w, _ = person_img.shape
 
         # Réduire les couleurs de l'image
         div = 64 # Pixel intensity division factor
         reduced_person_img = person_img // div * div + div // 2
         
+        person_histograms = getPersonHistograms(reduced_person_img, (0, 0, person_w, person_h))
+        
         # TODO: get bounding boxes for each person in each target image, and then compare histograms to find if the person matches
-        # ----- if the person matches, then save that image file in a directory for that person. The bounding boxes can be saved so
-        # ----- we don't have to reindentify them every time we want to generate histograms.
+        # ----- if the person matches, then save that image file in a directory for that person. The bounding boxes could be saved
+        # ----- so we don't have to reindentify them every time we want to generate histograms. We could also keep all people to
+        # ----- identify in memory and try to comare them all to a certain candidate, instead of having to reidentify a candidate
+        # ----- multiple times.
 
         # Ouvrir les images et appliquer les transformations
         for root, dirs, _ in os.walk(source_path_dir):
@@ -112,5 +120,31 @@ if __name__ == "__main__":
 
                     # Traiter le résultat de l'inférence
                     result = tools.process_inference(output,image)
+                    
+                    result_mask = np.load('output/saved_masks.npy') # Charger le masques détectés lors de l'inférence
+                    result_boxes = masks_to_boxes(torch.from_numpy(result_mask)) # Transformer les masques en bounding box
+                    
+                    # Charger l'image que l'on veux comparer avec l'image de notre personne
+                    candidate_img = cv2.imread(image_path)
+                    
+                    print("Resulting bounding boxes are:")
+                    for box in result_boxes:
+                        print(box)
+                        
+                        # Réduire les couleurs de l'image
+                        reduced_candidate_img = candidate_img // div * div + div // 2
+                        
+                        # Convertir boite englobante pytorch en tuple d'entiers
+                        box_tuple = tuple(int(val) for val in box.tolist())
+
+                        candidate_histograms = getPersonHistograms(reduced_person_img, box_tuple)
+                        
+                        # Faire la comparaison du candidat et de la personne recherchée
+                        comparison_result = comparePersonHistograms(person_histograms, candidate_histograms)
+                        if comparison_result is not None:
+                            if comparison_result > 0.0:
+                                print(f"Possible match, result of comparison is score of {comparison_result}")
+                    print()
+                    
                     result.save(os.path.join(output_dir_full_path, file_name))
                     # result.show()
