@@ -74,7 +74,7 @@ if __name__ == "__main__":
     #image_name = "sample_2.png"
     
     # Fichier d'images des personnes à identifier dans les images de caméra de surveillance
-    person_imgs = ['targets/person_1.png']
+    person_imgs = ['targets/person_1.png', 'targets/person_2.png', 'targets/person_3.png', 'targets/person_4.png', 'targets/person_5.png']
 
     # Charger le modèle et appliquer les transformations à l'image
     seg_model, transforms = model.get_model()
@@ -93,22 +93,16 @@ if __name__ == "__main__":
         
         person_histograms = getPersonHistograms(reduced_person_img, (0, 0, person_w, person_h))
         
-        # TODO: get bounding boxes for each person in each target image, and then compare histograms to find if the person matches
-        # ----- if the person matches, then save that image file in a directory for that person. The bounding boxes could be saved
-        # ----- so we don't have to reindentify them every time we want to generate histograms. We could also keep all people to
-        # ----- identify in memory and try to comare them all to a certain candidate, instead of having to reidentify a candidate
-        # ----- multiple times.
+        output_dir_full_path = os.path.join(output_path_dir, person_img_path.split("/")[-1])
+        # Créer le dossier pour les résultats, si il n'existe pas 
+        if not os.path.exists(output_dir_full_path):
+            os.makedirs(output_dir_full_path)
 
         # Ouvrir les images et appliquer les transformations
         for root, dirs, _ in os.walk(source_path_dir):
             for subdir in dirs:
                 full_dir = os.path.join(root, subdir)
                 for file_name in os.listdir(full_dir):
-                    
-                    output_dir_full_path = os.path.join(output_path_dir, subdir)
-                    # Créer le dossier pour les résultats, si il n'existe pas 
-                    if not os.path.exists(output_dir_full_path):
-                        os.makedirs(output_dir_full_path)
                     
                     image_path = os.path.join(full_dir, file_name)
                     image = Image.open(image_path)
@@ -127,24 +121,30 @@ if __name__ == "__main__":
                     # Charger l'image que l'on veux comparer avec l'image de notre personne
                     candidate_img = cv2.imread(image_path)
                     
-                    print("Resulting bounding boxes are:")
+                    # Réduire les couleurs de l'image
+                    reduced_candidate_img = candidate_img // div * div + div // 2
+                    
+                    best_match = None
+                    best_match_score = -1
                     for box in result_boxes:
-                        print(box)
-                        
-                        # Réduire les couleurs de l'image
-                        reduced_candidate_img = candidate_img // div * div + div // 2
-                        
                         # Convertir boite englobante pytorch en tuple d'entiers
-                        box_tuple = tuple(int(val) for val in box.tolist())
+                        box_list = [int(val) for val in box.tolist()]
 
-                        candidate_histograms = getPersonHistograms(reduced_person_img, box_tuple)
+                        candidate_histograms = getPersonHistograms(reduced_candidate_img, (box_list[0], box_list[1], box_list[2]-box_list[0], box_list[3]-box_list[1]))
                         
                         # Faire la comparaison du candidat et de la personne recherchée
                         comparison_result = comparePersonHistograms(person_histograms, candidate_histograms)
                         if comparison_result is not None:
-                            if comparison_result > 0.0:
-                                print(f"Possible match, result of comparison is score of {comparison_result}")
-                    print()
-                    
-                    result.save(os.path.join(output_dir_full_path, file_name))
-                    # result.show()
+                            # Si le score est plus que (ou égal à) 2.2, c'est probablement la personne qu'on cherche,
+                            # mais on donne la chance de voir si il y a un meilleur candidat dans l'image
+                            if comparison_result >= 2.2 and comparison_result > best_match_score:
+                                #print(f"Ding! Score of {comparison_result} at {box_list}")
+                                best_match_score = comparison_result
+                                best_match = box_list
+                                
+                    if best_match is not None:
+                        print(f"Possible match for {person_img_path} in {subdir}/{file_name}, result of comparison has score of {best_match_score}: {best_match}")
+                        annotated_candidate_img = cv2.rectangle(candidate_img, (best_match[0], best_match[1]),  (best_match[2], best_match[3]), (255, 0, 0), 2)
+                        cv2.imwrite(os.path.join(output_dir_full_path, file_name), annotated_candidate_img)
+        print(f"\n{person_img_path} finished.\n")
+    print("All Done!")
