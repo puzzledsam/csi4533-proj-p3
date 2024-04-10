@@ -25,7 +25,6 @@ def getPersonHistograms(source_img, person_rect):
         
         h = int(h / i) # Première iteration prends le masque complet, le deuxième ne prends que la moitiée supérieure
         
-        cv2.rectangle(source_img, (x, y), (x+w, y+h), (0, 255, 0), 2)
         mask = np.zeros(source_img.shape[:2], dtype=np.uint8)
         cv2.rectangle(mask, (x, y), (x+w, y+h), (255), -1)
         masks.append(mask)
@@ -58,15 +57,15 @@ def comparePersonHistograms(person1, person2):
 if __name__ == "__main__":
     
     torch_device_name = "cpu"
-    if torch.backends.mps.is_available():
-        # Pour les Macs avec Apple Silicon
-        torch_device_name = "mps"
-    elif torch.cuda.is_available():
+    if torch.cuda.is_available():
         # Pour les GPU Nvidia
         torch_device_name = "cuda"
+    elif torch.backends.mps.is_available():
+        # Pour les Macs avec Apple Silicon
+        torch_device_name = "mps"
         
     torch_device = torch.device(torch_device_name)
-    print(f"Using {torch_device} torch device for inference")
+    print(f"Using '{torch_device}' torch device for inference")
 
     # Définir les répertoires source et de sortie
     source_path_dir = "images"
