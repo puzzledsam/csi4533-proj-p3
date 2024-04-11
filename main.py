@@ -19,7 +19,7 @@ def getPersonHistograms(source_img, person_rect):
     for i in [1,2]:
         x, y, w, h = person_rect
         
-        if h < 40 or w < 25:
+        if h < 100 or w < 30:
             # On veut ignorer les petites régions
             break
         
@@ -76,7 +76,7 @@ if __name__ == "__main__":
     person_imgs = ['targets/person_1.png', 'targets/person_2.png', 'targets/person_3.png', 'targets/person_4.png', 'targets/person_5.png']
     
     # Facteur de réduction/division des couleurs
-    div = 64
+    div = 32
 
     # Charger le modèle et appliquer les transformations à l'image
     seg_model, transforms = model.get_model()
@@ -130,9 +130,9 @@ if __name__ == "__main__":
                         # Faire la comparaison du candidat et de la personne recherchée
                         comparison_result = comparePersonHistograms(person_histograms, candidate_histograms)
                         if comparison_result is not None:
-                            # Si le score est plus que (ou égal à) 2 c'est probablement la personne qu'on cherche,
-                            # mais on donne la chance de voir si il y a un meilleur candidat dans l'image
-                            if comparison_result >= 2 and comparison_result > best_match_score:
+                            # Si le score est plus que 2.6, c'est probablement la personne qu'on cherche,
+                            # mais on donne aussi la chance de voir si il y a un meilleur candidat dans l'image
+                            if comparison_result > 2.6 and comparison_result > best_match_score:
                                 best_match_score = comparison_result
                                 best_match = box_list
                                 
